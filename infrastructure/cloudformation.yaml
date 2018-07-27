@@ -126,7 +126,7 @@ Resources:
       NetworkInterfaces:
       - DeleteOnTermination: true
         DeviceIndex: 0
-        SubnetId: !Ref PrivateSubnet
+        SubnetId: !Ref Subnet
         GroupSet:
         - !Ref ClusterSecGroup
       Tags:
@@ -149,7 +149,7 @@ Resources:
       NetworkInterfaces:
       - DeleteOnTermination: true
         DeviceIndex: 0
-        SubnetId: !Ref PrivateSubnet
+        SubnetId: !Ref Subnet
         GroupSet:
         - !Ref ClusterSecGroup
       Tags:
@@ -172,7 +172,7 @@ Resources:
       NetworkInterfaces:
       - DeleteOnTermination: true
         DeviceIndex: 0
-        SubnetId: !Ref PrivateSubnet
+        SubnetId: !Ref Subnet
         GroupSet:
         - !Ref ClusterSecGroup
       Tags:
