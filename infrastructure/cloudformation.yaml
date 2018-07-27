@@ -1,4 +1,3 @@
----
 AWSTemplateFormatVersion: '2010-09-09'
 Description: 'Lab to demonstrate creating a Kubernetes cluster with kubeadm'
 
@@ -140,7 +139,7 @@ Resources:
             #!/bin/bash
             set -o xtrace
 
-    EC2InstanceB:
+  EC2InstanceB:
     Type: AWS::EC2::Instance
     Properties:
       AvailabilityZone: !Ref AvailabilityZone
