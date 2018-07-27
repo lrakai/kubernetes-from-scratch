@@ -1,0 +1,299 @@
+---
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Lab to demonstrate creating a Kubernetes cluster with kubeadm'
+
+Parameters:
+  KeyName:
+    Description: Existing EC2 KeyPair for SSH access.
+    Type: AWS::EC2::KeyPair::KeyName
+    ConstraintDescription: must be the name of an existing EC2 KeyPair.
+    Default: "{KeyName}"
+
+  AvailabilityZone:
+    Type: AWS::EC2::AvailabilityZone::Name
+    Default: us-west-2c
+
+  InstanceType:
+    Description: EC2 instance type for the cluster.
+    Type: String
+    Default: t2.micro
+    AllowedValues:
+    - t2.micro
+    - t2.small
+    - t2.medium
+    - t2.large
+    - t2.xlarge
+    - t2.2xlarge
+    - m1.small
+    - m1.medium
+    - m1.large
+    - m1.xlarge
+    - m3.medium
+    - m3.large
+    - m3.xlarge
+    - m3.2xlarge
+    - m4.large
+    - m4.xlarge
+    - m4.2xlarge
+    - m4.4xlarge
+    - m4.10xlarge
+    - m4.16xlarge
+    - c1.medium
+    - c1.xlarge
+    - c3.large
+    - c3.xlarge
+    - c3.2xlarge
+    - c3.4xlarge
+    - c3.8xlarge
+    - c4.large
+    - c4.xlarge
+    - c4.2xlarge
+    - c4.4xlarge
+    - c4.8xlarge
+    ConstraintDescription: must be a valid EC2 instance type.
+
+Mappings:
+  UserConfig:
+    Login:
+      Name: student
+      Pass: password
+
+Resources:
+  VPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: '10.0.0.0/16'
+      EnableDnsSupport: 'true'
+      EnableDnsHostnames: 'true'
+      Tags:
+      - Key: Name
+        Value: 'k8s-lab'
+
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+      - Key: Network
+        Value: Public
+
+  VPCGatewayAttachment:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId: !Ref VPC
+      InternetGatewayId: !Ref InternetGateway
+
+  Subnet:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: '10.0.0.0/24'
+      AvailabilityZone: !Ref AvailabilityZone
+      Tags:
+      - Key: Name
+        Value: Cluster subnet
+      MapPublicIpOnLaunch: true
+
+  SubnetRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+      - Key: Name
+        Value: Public Subnets
+      - Key: Network
+        Value: Public
+
+  SubnetRoute:
+    DependsOn: VPCGatewayAttachment
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref SubnetRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGateway
+
+  SubnetRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref Subnet
+      RouteTableId: !Ref SubnetRouteTable
+
+  EC2InstanceA:
+    Type: AWS::EC2::Instance
+    Properties:
+      AvailabilityZone: !Ref AvailabilityZone
+      IamInstanceProfile: !Ref EC2InstanceProfile
+      InstanceType: !Ref InstanceType
+      KeyName: !Ref KeyName
+      NetworkInterfaces:
+      - DeleteOnTermination: true
+        DeviceIndex: 0
+        SubnetId: !Ref PrivateSubnet
+        GroupSet:
+        - !Ref ClusterSecGroup
+      Tags:
+      - Key: Name
+        Value: instance-a
+      ImageId: 'ami-ba602bc2'
+      UserData:
+        Fn::Base64:
+          Fn::Sub: |
+            #!/bin/bash
+            set -o xtrace
+
+    EC2InstanceB:
+    Type: AWS::EC2::Instance
+    Properties:
+      AvailabilityZone: !Ref AvailabilityZone
+      IamInstanceProfile: !Ref EC2InstanceProfile
+      InstanceType: !Ref InstanceType
+      KeyName: !Ref KeyName
+      NetworkInterfaces:
+      - DeleteOnTermination: true
+        DeviceIndex: 0
+        SubnetId: !Ref PrivateSubnet
+        GroupSet:
+        - !Ref ClusterSecGroup
+      Tags:
+      - Key: Name
+        Value: instance-b
+      ImageId: 'ami-ba602bc2'
+      UserData:
+        Fn::Base64:
+          Fn::Sub: |
+            #!/bin/bash
+            set -o xtrace
+
+  EC2InstanceC:
+    Type: AWS::EC2::Instance
+    Properties:
+      AvailabilityZone: !Ref AvailabilityZone
+      IamInstanceProfile: !Ref EC2InstanceProfile
+      InstanceType: !Ref InstanceType
+      KeyName: !Ref KeyName
+      NetworkInterfaces:
+      - DeleteOnTermination: true
+        DeviceIndex: 0
+        SubnetId: !Ref PrivateSubnet
+        GroupSet:
+        - !Ref ClusterSecGroup
+      Tags:
+      - Key: Name
+        Value: instance-c
+      ImageId: 'ami-ba602bc2'
+      UserData:
+        Fn::Base64:
+          Fn::Sub: |
+            #!/bin/bash
+            set -o xtrace
+
+  ClusterSecGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security group for all machines in the cluster
+      VpcId: !Ref VPC
+      Tags:
+      - Key: Name
+        Value: k8s-cluster
+
+  ClusterSecGroupCrossTalk:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !Ref ClusterSecGroup
+      SourceSecurityGroupId: !Ref ClusterSecGroup
+      IpProtocol: '-1'
+      FromPort: '0'
+      ToPort: '65535'
+
+  ClusterSecGroupAllow22:
+    Metadata:
+      Comment: Open up port 22 for SSH into each machine
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !Ref ClusterSecGroup
+      IpProtocol: tcp
+      FromPort: '22'
+      ToPort: '22'
+      CidrIp: 0.0.0.0/0
+
+  ClusterSecGroupAllow6443FromLB:
+    Metadata:
+      Comment: Open up port 6443 for load balancing the API server
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !Ref ClusterSecGroup
+      IpProtocol: tcp
+      FromPort: '6443'
+      ToPort: '6443'
+      CidrIp: 0.0.0.0/0
+
+  EC2Role:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service:
+            - ec2.amazonaws.com
+          Action:
+          - sts:AssumeRole
+      Path: "/"
+      Policies:
+      - PolicyName: master
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+          - Effect: Allow
+            Action:
+            - ec2:Describe*
+            - ec2:Get*
+            - elasticloadbalancing:Describe*
+            Resource: "*"
+
+  EC2InstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Path: "/"
+      Roles:
+      - !Ref EC2Role
+
+  Group:
+    Type: AWS::IAM::Group
+    Properties:
+      GroupName: Students
+      Path: "/"
+      Policies:
+      - PolicyName: students-policy
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+          - Effect: Allow
+            Action:
+            - ec2:Describe*
+            Resource: "*"
+            Condition:
+              StringEquals:
+                ec2:Region: us-west-2
+          - Effect: Allow
+            Action:
+            - elasticloadbalancing:DescribeLoadBalancers
+            Resource: "*"
+
+  User:
+    Type: AWS::IAM::User
+    Properties:
+      LoginProfile:
+        Password:
+          Fn::FindInMap:
+          - UserConfig
+          - Login
+          - Pass
+      Path: "/"
+      Groups:
+      - Students
+      UserName:
+        Fn::FindInMap:
+        - UserConfig
+        - Login
+        - Name
