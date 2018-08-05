@@ -1,0 +1,55 @@
+apiVersion: batch/v1beta1
+kind: Job
+metadata:
+  name: backup
+  namespace: management
+spec:
+  template:
+    spec:
+      containers:
+      # Use etcdctl snapshot save to create a snapshot in the /snapshot directory 
+      - command:
+        - /bin/sh 
+        args:
+        - -ec
+        - etcdctl --cacert=/etc/kubernetes/pki/etcd/ca.crt --cert=/etc/kubernetes/pki/etcd/peer.crt --key=/etc/kubernetes/pki/etcd/peer.key snapshot save /snapshots/backup.db
+        # The same image used by the etcd pod
+        image: k8s.gcr.io/etcd-amd64:3.1.12
+        name: etcdctl
+        env:
+        # Set the etcdctl API version to 3 (to match the version of etcd installed by kubeadm)
+        - name: ETCDCTL_API
+          value: '3'
+        volumeMounts:
+        - mountPath: /etc/kubernetes/pki/etcd
+          name: etcd-certs
+          readOnly: true
+        - mountPath: /snapshots
+          name: snapshots
+      # Use the host network where the etcd port is accessible (etcd pod uses host network)
+      # This allows the etcdctl to connect to etcd that is listening on the host network
+      hostNetwork: true
+      affinity:
+        # Use node affinity to schedule the pod on the master (where the etcd pod is)
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: node-role.kubernetes.io/master
+                operator: Exists
+      restartPolicy: OnFailure
+      tolerations:
+      # tolerate the master's NoSchedule taint to allow scheduling on the master
+      - effect: NoSchedule
+        operator: Exists
+      volumes:
+      # Volume storing the etcd PKI keys and certificates
+      - hostPath:
+          path: /etc/kubernetes/pki/etcd
+          type: DirectoryOrCreate
+        name: etcd-certs
+      # A volume to store the backup snapshot
+      - hostPath:
+          path: /snapshots
+          type: DirectoryOrCreate
+        name: snapshots
