@@ -171,8 +171,8 @@ Resources:
             curl -s https://packages.cloud.google.com/apt/doc/apt-key.gpg | apt-key add -
             add-apt-repository "deb http://apt.kubernetes.io/ kubernetes-xenial main"
             apt-get update
-            apt-get install -y kubelet=1.10.6-00 kubeadm=1.10.6-00 kubectl=1.10.6-00
-            apt-mark hold kubelet kubeadm kubectl
+            apt-get install -y kubeadm=1.13.4-00 kubelet=1.13.4-00 kubectl=1.13.4-00 kubernetes-cni=0.6.0-00
+            sudo apt-mark hold kubelet kubeadm kubectl
 
   EC2InstanceC:
     Type: AWS::EC2::Instance
@@ -205,8 +205,8 @@ Resources:
             curl -s https://packages.cloud.google.com/apt/doc/apt-key.gpg | apt-key add -
             add-apt-repository "deb http://apt.kubernetes.io/ kubernetes-xenial main"
             apt-get update
-            apt-get install -y kubelet=1.10.6-00 kubeadm=1.10.6-00 kubectl=1.10.6-00
-            apt-mark hold kubelet kubeadm kubectl
+            apt-get install -y kubeadm=1.13.4-00 kubelet=1.13.4-00 kubectl=1.13.4-00 kubernetes-cni=0.6.0-00
+            sudo apt-mark hold kubelet kubeadm kubectl
 
   ClusterSecGroup:
     Type: AWS::EC2::SecurityGroup
